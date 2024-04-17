@@ -1,51 +1,30 @@
-use std::{net::SocketAddr, sync::{atomic::{AtomicUsize, Ordering}, Arc}};
+use std::sync::{atomic::AtomicUsize, Arc};
 
-use block::BlockOn;
+use client::{Client, IpAddress, Username, UuidComponent};
 use evenio::prelude::*;
-use login::{login_handler, ClientInfo};
-use packet_io::PacketIo;
-use serde_json::json;
+use event::{ClientDisconnectEvent, ClientLoginEvent, ConnectionEvent, LoginEvent, StatusEvent};
+use handshake::connection_handler;
+use login::login_handler;
 use status::status_handler;
-use tokio::net::{TcpListener, TcpStream};
-use valence_protocol::{packets::{handshaking::{handshake_c2s::HandshakeNextState, HandshakeC2s}, status::{QueryPingC2s, QueryPongS2c, QueryRequestC2s, QueryResponseS2c}}, CompressionThreshold, PacketDecoder, PacketEncoder};
+use tokio::net::TcpListener;
+use tracing::{info, Level};
+use valence_protocol::CompressionThreshold;
 
 pub mod packet_io;
 pub mod block;
 pub mod login;
 pub mod status;
-
-#[derive(Component)]
-pub struct Client {
-    pub address: SocketAddr,
-}
-
-#[derive(Debug, Event)]
-pub struct ConnectionEvent {
-    pub stream: TcpStream,
-    pub remote_ip: SocketAddr,
-}
-
-#[derive(Event)]
-pub struct StatusEvent {
-    packet_io: PacketIo,
-}
-
-#[derive(Event)]
-pub struct LoginEvent {
-    packet_io: PacketIo,
-    remote_ip: SocketAddr,
-}
-
-#[derive(Event)]
-pub struct ClientLoginEvent {
-    pub packet_io: PacketIo,
-    pub info: ClientInfo,
-}
+pub mod client;
+pub mod event;
+pub mod legacy_ping;
+pub mod handshake;
+pub mod position;
+pub mod set_brand;
 
 #[derive(Debug, Component)]
 pub struct Server {
     version_name: String,
-    protocol_id: i32,
+    protocol_version: i32,
     max_players: usize,
     online: AtomicUsize,
     motd: String,
@@ -66,15 +45,23 @@ pub enum ConnectionMode {
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt()
+        .with_max_level(Level::INFO)
+        .init();
+
     let mut world = World::new();
     world.add_handler(connection_handler);
     world.add_handler(status_handler);
     world.add_handler(login_handler);
+    world.add_handler(client_login_handler);
+    world.add_handler(client_disconnect_handler);
+    world.add_handler(init_client);
+
 
     let server = world.spawn();
     world.insert(server, Server {
         version_name: "1.20.1".to_string(),
-        protocol_id: 763,
+        protocol_version: 763,
         max_players: 20,
         online: AtomicUsize::new(0),
         motd: "A Valence Minecraft Server".to_string(),
@@ -82,48 +69,49 @@ async fn main() {
         connection_mode: ConnectionMode::Offline,
         threshold: CompressionThreshold(256),
     });
-    
-    let listener = TcpListener::bind("127.0.0.1:25566").await.unwrap();
+
+    let Ok(listener) = TcpListener::bind("127.0.0.1:25566").await else { return; };
+
+    info!("Listening for connections");
     loop  {
-        let Ok((stream, address)) = listener.accept().await else { continue; };
+        let Ok((stream, remote_addr)) = listener.accept().await else { continue; };
         world.send(ConnectionEvent {
             stream,
-            remote_ip: address
+            remote_addr,
         });
     }
 }
 
-fn client_login_handler(r: ReceiverMut<ClientLoginEvent>) {
+fn client_login_handler(
+    r: ReceiverMut<ClientLoginEvent>, 
+    mut sender: Sender<(
+        Spawn,
+        Insert<Client>,
+        Insert<IpAddress>,
+        Insert<Username>,
+        Insert<UuidComponent>,
+    )>
+) {
     let event = EventMut::take(r.event);
-    let mut packet_io = event.packet_io;
+    let packet_io = event.packet_io;
+    let info = event.info;
 
-    let packet = packet_io.recv_packet();
+    let client = sender.spawn();
+    sender.insert(client, packet_io.into_client());
+    sender.insert(client, IpAddress(info.ip));
+    sender.insert(client, Username(info.username));
+    sender.insert(client, UuidComponent(info.uuid));
+
 }
 
-fn connection_handler(r: ReceiverMut<ConnectionEvent>, mut sender: Sender<(StatusEvent, LoginEvent)>) {
-    let event = EventMut::take(r.event);
+fn init_client(r: Receiver<Insert<Client>, ()>) {
+    let entity = r.event.entity;
 
-    let mut packet_io = PacketIo::new(
-        event.stream,
-        PacketEncoder::new(),
-        PacketDecoder::new(),
-    );
+    
 
-    async {
-        let handshake = packet_io.recv_packet::<HandshakeC2s>().await.unwrap();
-        match handshake.next_state {
-            HandshakeNextState::Status => {
-                sender.send(StatusEvent {
-                    packet_io,
-                });
-            }
-            HandshakeNextState::Login => {
-                sender.send(LoginEvent {
-                    packet_io,
-                    remote_ip: event.remote_ip,
-                });
-            },
-        }
+}
 
-    }.block();
+fn client_disconnect_handler(r: Receiver<ClientDisconnectEvent>, mut sender: Sender<Despawn>) {
+    let entity = r.event.entity;
+    sender.despawn(entity);
 }

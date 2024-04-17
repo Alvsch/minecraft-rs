@@ -3,6 +3,10 @@ name = "minecraft-rs"
 version = "0.1.0"
 edition = "2021"
 
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+
 [profile.dev.package."*"]
 opt-level = 3
 
@@ -11,8 +15,23 @@ opt-level = 1
 
 
 [dependencies]
-evenio = "0.5.0"
+derive_more = { version = "0.99.17", features = ["deref", "deref_mut"] }
+evenio.workspace = true
+futures = { version = "0.3.30", default-features = false, features = ["executor"] }
+hmac = "0.12.1"
 md5 = "0.7.0"
+rand = "0.8.5"
 serde_json = "1.0.116"
+sha2 = "0.10.8"
 tokio = { version = "1.37.0", features = ["full"] }
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
+valence_protocol.workspace = true
+valence_entity.workspace = true
+
+[workspace.dependencies]
+evenio = "0.5.0"
+
 valence_protocol = { git = "https://github.com/valence-rs/valence", features = ["compression", "encryption"] }
+valence_entity = { path = "crates/valence_entity" }
+valence_generated = { git = "https://github.com/valence-rs/valence" }

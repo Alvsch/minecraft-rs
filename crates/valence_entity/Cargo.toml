@@ -1,0 +1,9 @@
+[package]
+name = "valence_entity"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+valence_protocol.workspace = true
+evenio.workspace = true
+indexmap = "2.2.6"

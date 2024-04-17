@@ -4,7 +4,8 @@ use evenio::component::Component;
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream};
 use valence_protocol::{anyhow, bytes::BytesMut, decode::PacketFrame, CompressionThreshold, Decode, Encode, Packet, PacketDecoder, PacketEncoder};
 
-#[derive(Component)]
+use crate::client::Client;
+
 pub struct PacketIo {
     stream: TcpStream,
     enc: PacketEncoder,
@@ -41,11 +42,14 @@ impl PacketIo {
     where
         P: Packet + Decode<'a>,
     {
+        self.frame = self.recv_frame().await?;
+        self.frame.decode()
+    }
+
+    pub async fn recv_frame(&mut self) -> anyhow::Result<PacketFrame>{
         loop {
             if let Some(frame) = self.dec.try_next_packet()? {
-                self.frame = frame;
-
-                return self.frame.decode();
+                return Ok(frame);
             }
 
             self.dec.reserve(READ_BUF_SIZE);
@@ -59,6 +63,13 @@ impl PacketIo {
             // the call to `read_buf` shouldn't have grown the allocation.
             self.dec.queue_bytes(buf);
         }
+    }
+
+    pub fn into_client(self) -> Client {
+        Client::new(
+            self.stream,
+            self.enc,
+        )
     }
 
     #[allow(dead_code)]

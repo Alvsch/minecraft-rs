@@ -16,7 +16,7 @@ pub fn status_handler(r: ReceiverMut<StatusEvent>, server: Single<&Server>) {
         let json = json!({
             "version": {
                 "name": server.version_name,
-                "protocol": server.protocol_id,
+                "protocol": server.protocol_version,
             },
             "players": {
                 "max": server.max_players,
