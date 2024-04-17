@@ -1,0 +1,18 @@
+[package]
+name = "minecraft-rs"
+version = "0.1.0"
+edition = "2021"
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.dev]
+opt-level = 1
+
+
+[dependencies]
+evenio = "0.5.0"
+md5 = "0.7.0"
+serde_json = "1.0.116"
+tokio = { version = "1.37.0", features = ["full"] }
+valence_protocol = { git = "https://github.com/valence-rs/valence", features = ["compression", "encryption"] }
