@@ -1,6 +1,5 @@
 use std::io::{self, ErrorKind};
 
-use evenio::component::Component;
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream};
 use valence_protocol::{anyhow, bytes::BytesMut, decode::PacketFrame, CompressionThreshold, Decode, Encode, Packet, PacketDecoder, PacketEncoder};
 

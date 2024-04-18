@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use evenio::prelude::*;
 use indexmap::IndexMap;
-use valence_protocol::uuid::Uuid;
+use uuid::Uuid;
 pub use valence_generated::attributes::{EntityAttribute, EntityAttributeOperation};
 use valence_protocol::packets::play::entity_attributes_s2c::*;
 use valence_protocol::Ident;

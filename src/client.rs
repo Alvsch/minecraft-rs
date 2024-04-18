@@ -1,9 +1,10 @@
-use std::{borrow::Cow, net::IpAddr, thread};
+use std::{borrow::Cow, net::IpAddr};
 use derive_more::{Deref, DerefMut};
 
 use evenio::component::Component;
 use tokio::{io::AsyncWriteExt, net::TcpStream};
-use valence_protocol::{anyhow, math::{DVec3, Vec3}, packets::play::{game_state_change_s2c::GameEventKind, DeathMessageS2c, EntityStatusS2c, EntityVelocityUpdateS2c, GameStateChangeS2c, ParticleS2c, PlaySoundS2c}, profile::Property, sound::{SoundCategory, SoundId}, text::IntoText, BlockPos, Encode, GameMode, Ident, Packet, PacketEncoder, Particle, Sound, VarInt, Velocity, WritePacket};
+use valence_entity::{EntityStatus, Velocity};
+use valence_protocol::{anyhow, math::{DVec3, Vec3}, packets::play::{game_state_change_s2c::GameEventKind, DeathMessageS2c, EntityStatusS2c, EntityVelocityUpdateS2c, GameStateChangeS2c, ParticleS2c, PlaySoundS2c}, profile::Property, sound::{SoundCategory, SoundId}, text::IntoText, BlockPos, Encode, GameMode, Ident, Packet, PacketEncoder, Particle, Sound, VarInt, WritePacket};
 
 use crate::block::BlockOn;
 

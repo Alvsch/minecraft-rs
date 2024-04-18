@@ -1,25 +1,27 @@
 #![allow(clippy::type_complexity)]
 
-use bevy_app::prelude::*;
-use bevy_ecs::prelude::*;
+use evenio::prelude::*;
 use derive_more::Deref;
 use valence_math::{Aabb, UVec3, Vec3Swizzles};
 use valence_protocol::Direction;
+use valence_server_common::Tick;
 
 use crate::*;
 
-#[derive(SystemSet, Clone, Copy, Debug, Hash, PartialEq, Eq)]
-pub struct HitboxShapeUpdateSet;
+use self::entity::Entity;
 
-#[derive(SystemSet, Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[derive(Event, Clone, Copy, Debug, Hash, PartialEq, Eq)]
+pub struct HitboxShapeUpdateEvent;
+
+#[derive(Event, Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub struct HitboxComponentsAddSet;
 
-#[derive(SystemSet, Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[derive(Event, Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub struct HitboxUpdateSet;
 
 pub struct HitboxPlugin;
 
-#[derive(Resource)]
+#[derive(Component)]
 /// Settings for hitbox plugin
 pub struct EntityHitboxSettings {
     /// Controls if a plugin should add hitbox component on each created entity.
@@ -37,34 +39,31 @@ impl Default for EntityHitboxSettings {
 }
 
 impl Plugin for HitboxPlugin {
-    fn build(&self, app: &mut App) {
-        app.init_resource::<EntityHitboxSettings>()
-            .configure_sets(PreUpdate, HitboxShapeUpdateSet)
-            .add_systems(
-                PreUpdate,
-                (
-                    update_constant_hitbox,
-                    update_warden_hitbox,
-                    update_area_effect_cloud_hitbox,
-                    update_armor_stand_hitbox,
-                    update_passive_child_hitbox,
-                    update_zombie_hitbox,
-                    update_piglin_hitbox,
-                    update_zoglin_hitbox,
-                    update_player_hitbox,
-                    update_item_frame_hitbox,
-                    update_slime_hitbox,
-                    update_painting_hitbox,
-                    update_shulker_hitbox,
-                ),
-            )
-            .configure_sets(PostUpdate, HitboxComponentsAddSet)
-            .add_systems(
-                PostUpdate,
-                add_hitbox_component.in_set(HitboxComponentsAddSet),
-            )
-            .configure_sets(PreUpdate, HitboxUpdateSet.after(HitboxShapeUpdateSet))
-            .add_systems(PreUpdate, update_hitbox.in_set(HitboxUpdateSet));
+    fn build(&self, world: &mut World) {
+        // HitboxShapeUpdateSet
+        world.add_handler(update_constant_hitbox);
+        world.add_handler(update_warden_hitbox);
+        world.add_handler(update_area_effect_cloud_hitbox);
+        world.add_handler(update_armor_stand_hitbox);
+        world.add_handler(update_passive_child_hitbox);
+        world.add_handler(update_zombie_hitbox);
+        world.add_handler(update_piglin_hitbox);
+        world.add_handler(update_zoglin_hitbox);
+        world.add_handler(update_player_hitbox);
+        world.add_handler(update_item_frame_hitbox);
+        world.add_handler(update_slime_hitbox);
+        world.add_handler(update_painting_hitbox);
+        world.add_handler(update_shulker_hitbox);
+
+        // HitboxComponentsAddSet
+        world.add_handler(add_hitbox_component); // TODO: add depending on settings
+        world.add_handler(add_hitbox_component2); // TODO: add depending on settings
+
+        // HitboxUpdateSet
+        world.add_handler(update_hitbox);
+
+        let settings = world.spawn();
+        world.insert(settings, EntityHitboxSettings::default());
     }
 }
 
@@ -102,45 +101,47 @@ impl Hitbox {
 }
 
 fn add_hitbox_component(
-    settings: Res<EntityHitboxSettings>,
-    mut commands: Commands,
-    query: Query<(Entity, &Position), Added<entity::Entity>>,
-    alt_query: Query<(Entity, &Position, &HitboxShape), Added<HitboxShape>>,
+    r: Receiver<Insert<Entity>, &Position>,
+    mut sender: Sender<(Insert<HitboxShape>, Insert<Hitbox>)>,
+    settings: Single<&EntityHitboxSettings>,
 ) {
-    if settings.add_hitbox_component {
-        for (entity, pos) in query.iter() {
-            commands
-                .entity(entity)
-                .insert(HitboxShape::ZERO)
-                .insert(Hitbox(HitboxShape::ZERO.in_world(pos.0)));
-        }
-    } else {
-        for (entity, pos, hitbox) in alt_query.iter() {
-            commands
-                .entity(entity)
-                .insert(Hitbox(hitbox.in_world(pos.0)));
-        }
+    let entity = r.event.entity;
+    let pos = r.query;
+
+    if settings.0.add_hitbox_component {
+        sender.insert(entity, HitboxShape::ZERO);
+        sender.insert(entity, Hitbox(HitboxShape::ZERO.in_world(pos.0)));
+    }
+}
+
+fn add_hitbox_component2(
+    mut r: ReceiverMut<Insert<HitboxShape>, &Position>,
+    mut sender: Sender<Insert<Hitbox>>,
+    settings: Single<&EntityHitboxSettings>,
+) {
+    let entity = r.event.entity;
+    let hitbox = &mut r.event.component;
+    let pos = r.query;
+
+    if !settings.0.add_hitbox_component {
+        sender
+            .insert(entity, Hitbox(hitbox.in_world(pos.0)));
     }
 }
 
 fn update_hitbox(
-    mut hitbox_query: Query<
-        (&mut Hitbox, &HitboxShape, &Position),
-        Or<(Changed<HitboxShape>, Changed<Position>)>,
-    >,
+    _: Receiver<Tick>,
+    mut hitbox_fetcher: Fetcher<(&mut Hitbox, &HitboxShape, &Position)>,
 ) {
-    for (mut in_world, hitbox, pos) in hitbox_query.iter_mut() {
+    for (in_world, hitbox, pos) in hitbox_fetcher.iter_mut() {
         in_world.0 = hitbox.in_world(pos.0);
     }
 }
 
 fn update_constant_hitbox(
-    mut hitbox_query: Query<
-        (&mut HitboxShape, &EntityKind),
-        Or<(Changed<EntityKind>, Added<HitboxShape>)>,
-    >,
+    mut hitbox_fetcher: Fetcher<(&mut HitboxShape, &EntityKind)>,
 ) {
-    for (mut hitbox, entity_kind) in hitbox_query.iter_mut() {
+    for (hitbox, entity_kind) in hitbox_fetcher.iter_mut() {
         let size = match *entity_kind {
             EntityKind::ALLAY => [0.6, 0.35, 0.6],
             EntityKind::CHEST_BOAT | EntityKind::BOAT => [1.375, 0.5625, 1.375],
@@ -222,15 +223,9 @@ fn update_constant_hitbox(
 }
 
 fn update_warden_hitbox(
-    mut query: Query<
-        (&mut HitboxShape, &entity::Pose),
-        (
-            Or<(Changed<entity::Pose>, Added<HitboxShape>)>,
-            With<warden::WardenEntity>,
-        ),
-    >,
+    mut fetcher: Fetcher<(&mut HitboxShape, &entity::Pose, With<&warden::WardenEntity>)>,
 ) {
-    for (mut hitbox, entity_pose) in query.iter_mut() {
+    for (hitbox, entity_pose, _) in fetcher.iter_mut() {
         hitbox.centered(
             match entity_pose.0 {
                 Pose::Emerging | Pose::Digging => [0.9, 1.0, 0.9],
@@ -242,24 +237,18 @@ fn update_warden_hitbox(
 }
 
 fn update_area_effect_cloud_hitbox(
-    mut query: Query<
-        (&mut HitboxShape, &area_effect_cloud::Radius),
-        Or<(Changed<area_effect_cloud::Radius>, Added<HitboxShape>)>,
-    >,
+    mut fetcher: Fetcher<(&mut HitboxShape, &area_effect_cloud::Radius)>,
 ) {
-    for (mut hitbox, cloud_radius) in query.iter_mut() {
+    for (hitbox, cloud_radius) in fetcher.iter_mut() {
         let diameter = cloud_radius.0 as f64 * 2.0;
         hitbox.centered([diameter, 0.5, diameter].into());
     }
 }
 
 fn update_armor_stand_hitbox(
-    mut query: Query<
-        (&mut HitboxShape, &armor_stand::ArmorStandFlags),
-        Or<(Changed<armor_stand::ArmorStandFlags>, Added<HitboxShape>)>,
-    >,
+    mut fetcher: Fetcher<(&mut HitboxShape, &armor_stand::ArmorStandFlags)>,
 ) {
-    for (mut hitbox, stand_flags) in query.iter_mut() {
+    for (hitbox, stand_flags) in fetcher.iter_mut() {
         hitbox.centered(
             if stand_flags.0 & 16 != 0 {
                 // Marker armor stand
@@ -284,13 +273,10 @@ fn child_hitbox(child: bool, v: DVec3) -> DVec3 {
 }
 
 fn update_passive_child_hitbox(
-    mut query: Query<
-        (Entity, &mut HitboxShape, &EntityKind, &passive::Child),
-        Or<(Changed<passive::Child>, Added<HitboxShape>)>,
-    >,
-    pose_query: Query<&entity::Pose>,
+    mut fetcher: Fetcher<(EntityId, &mut HitboxShape, &EntityKind, &passive::Child, With<&Entity>)>,
+    pose_fetcher: Fetcher<(&entity::Pose, With<&Entity>)>,
 ) {
-    for (entity, mut hitbox, entity_kind, child) in query.iter_mut() {
+    for (entity, hitbox, entity_kind, child, _) in fetcher.iter_mut() {
         let big_s = match *entity_kind {
             EntityKind::BEE => [0.7, 0.6, 0.7],
             EntityKind::CAMEL => [1.7, 2.375, 1.7],
@@ -298,9 +284,9 @@ fn update_passive_child_hitbox(
             EntityKind::DONKEY => [1.5, 1.39648, 1.5],
             EntityKind::FOX => [0.6, 0.7, 0.6],
             EntityKind::GOAT => {
-                if pose_query
+                if pose_fetcher
                     .get(entity)
-                    .map_or(false, |v| v.0 == Pose::LongJumping)
+                    .map_or(false, |(v, _)| v.0 == Pose::LongJumping)
                 {
                     [0.63, 0.91, 0.63]
                 } else {
@@ -342,48 +328,33 @@ fn update_passive_child_hitbox(
 }
 
 fn update_zombie_hitbox(
-    mut query: Query<
-        (&mut HitboxShape, &zombie::Baby),
-        Or<(Changed<zombie::Baby>, Added<HitboxShape>)>,
-    >,
+    mut fetcher: Fetcher<(&mut HitboxShape, &zombie::Baby)>,
 ) {
-    for (mut hitbox, baby) in query.iter_mut() {
+    for (hitbox, baby) in fetcher.iter_mut() {
         hitbox.centered(child_hitbox(baby.0, [0.6, 1.95, 0.6].into()));
     }
 }
 
 fn update_piglin_hitbox(
-    mut query: Query<
-        (&mut HitboxShape, &piglin::Baby),
-        Or<(Changed<piglin::Baby>, Added<HitboxShape>)>,
-    >,
+    mut fetcher: Fetcher<(&mut HitboxShape, &piglin::Baby)>,
 ) {
-    for (mut hitbox, baby) in query.iter_mut() {
+    for (hitbox, baby) in fetcher.iter_mut() {
         hitbox.centered(child_hitbox(baby.0, [0.6, 1.95, 0.6].into()));
     }
 }
 
 fn update_zoglin_hitbox(
-    mut query: Query<
-        (&mut HitboxShape, &zoglin::Baby),
-        Or<(Changed<zoglin::Baby>, Added<HitboxShape>)>,
-    >,
+    mut fetcher: Fetcher<(&mut HitboxShape, &zoglin::Baby)>,
 ) {
-    for (mut hitbox, baby) in query.iter_mut() {
+    for (hitbox, baby) in fetcher.iter_mut() {
         hitbox.centered(child_hitbox(baby.0, [1.39648, 1.4, 1.39648].into()));
     }
 }
 
 fn update_player_hitbox(
-    mut query: Query<
-        (&mut HitboxShape, &entity::Pose),
-        (
-            Or<(Changed<entity::Pose>, Added<HitboxShape>)>,
-            With<player::PlayerEntity>,
-        ),
-    >,
+    mut fetcher: Fetcher<(&mut HitboxShape, &entity::Pose, With<&Entity>)>,
 ) {
-    for (mut hitbox, pose) in query.iter_mut() {
+    for (hitbox, pose, _) in fetcher.iter_mut() {
         hitbox.centered(
             match pose.0 {
                 Pose::Sleeping | Pose::Dying => [0.2, 0.2, 0.2],
@@ -397,12 +368,9 @@ fn update_player_hitbox(
 }
 
 fn update_item_frame_hitbox(
-    mut query: Query<
-        (&mut HitboxShape, &item_frame::Rotation),
-        Or<(Changed<item_frame::Rotation>, Added<HitboxShape>)>,
-    >,
+    mut fetcher: Fetcher<(&mut HitboxShape, &item_frame::Rotation)>,
 ) {
-    for (mut hitbox, rotation) in query.iter_mut() {
+    for (hitbox, rotation) in fetcher.iter_mut() {
         let mut center_pos = DVec3::splat(0.5);
 
         const A: f64 = 0.46875;
@@ -430,28 +398,18 @@ fn update_item_frame_hitbox(
 }
 
 fn update_slime_hitbox(
-    mut query: Query<
-        (&mut HitboxShape, &slime::SlimeSize),
-        Or<(Changed<slime::SlimeSize>, Added<HitboxShape>)>,
-    >,
+    mut fetcher: Fetcher<(&mut HitboxShape, &slime::SlimeSize)>,
 ) {
-    for (mut hitbox, slime_size) in query.iter_mut() {
+    for (hitbox, slime_size) in fetcher.iter_mut() {
         let s = 0.5202 * slime_size.0 as f64;
         hitbox.centered([s, s, s].into());
     }
 }
 
 fn update_painting_hitbox(
-    mut query: Query<
-        (&mut HitboxShape, &painting::Variant, &Look),
-        Or<(
-            Changed<Look>,
-            Changed<painting::Variant>,
-            Added<HitboxShape>,
-        )>,
-    >,
+    mut fetcher: Fetcher<(&mut HitboxShape, &painting::Variant, &Look)>,
 ) {
-    for (mut hitbox, painting_variant, look) in query.iter_mut() {
+    for (hitbox, painting_variant, look) in fetcher.iter_mut() {
         let bounds: UVec3 = match painting_variant.0 {
             PaintingKind::Kebab => [1, 1, 1],
             PaintingKind::Aztec => [1, 1, 1],
@@ -513,22 +471,11 @@ fn update_painting_hitbox(
 }
 
 fn update_shulker_hitbox(
-    mut query: Query<
-        (
-            &mut HitboxShape,
-            &shulker::PeekAmount,
-            &shulker::AttachedFace,
-        ),
-        Or<(
-            Changed<shulker::PeekAmount>,
-            Changed<shulker::AttachedFace>,
-            Added<HitboxShape>,
-        )>,
-    >,
+    mut fetcher: Fetcher<(&mut HitboxShape, &shulker::PeekAmount, &shulker::AttachedFace)>,
 ) {
     use std::f64::consts::PI;
 
-    for (mut hitbox, peek_amount, attached_face) in query.iter_mut() {
+    for (hitbox, peek_amount, attached_face) in fetcher.iter_mut() {
         let pos = DVec3::splat(0.5);
         let mut min = pos - 0.5;
         let mut max = pos + 0.5;

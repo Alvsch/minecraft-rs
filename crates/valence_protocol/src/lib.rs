@@ -31,66 +31,66 @@ extern crate self as valence_protocol;
 
 mod array;
 mod biome_pos;
-// mod bit_set;
+mod bit_set;
 pub mod block_pos;
-// mod bounded;
-// mod byte_angle;
-// pub mod chunk_pos;
-// pub mod chunk_section_pos;
-// pub mod decode;
-// mod difficulty;
+mod bounded;
+mod byte_angle;
+pub mod chunk_pos;
+pub mod chunk_section_pos;
+pub mod decode;
+mod difficulty;
 mod direction;
-// pub mod encode;
-// pub mod game_mode;
-// mod global_pos;
-// mod hand;
-// mod impls;
-// pub mod item;
-// pub mod packets;
-// pub mod profile;
-// mod raw;
-// pub mod sound;
+pub mod encode;
+pub mod game_mode;
+mod global_pos;
+mod hand;
+mod impls;
+pub mod item;
+pub mod packets;
+pub mod profile;
+mod raw;
+pub mod sound;
 pub mod var_int;
-// mod var_long;
-// mod velocity;
+mod var_long;
+mod velocity;
 
-// use std::io::Write;
+use std::io::Write;
 
-// use anyhow::Context;
-// pub use array::FixedArray;
-// pub use biome_pos::BiomePos;
-// pub use bit_set::FixedBitSet;
-// pub use block::{BlockKind, BlockState};
-// pub use block_pos::BlockPos;
-// pub use bounded::Bounded;
-// pub use byte_angle::ByteAngle;
-// pub use chunk_pos::ChunkPos;
-// pub use chunk_section_pos::ChunkSectionPos;
-// pub use decode::PacketDecoder;
-// use derive_more::{From, Into};
-// pub use difficulty::Difficulty;
-// pub use direction::Direction;
-// pub use encode::{PacketEncoder, WritePacket};
-// pub use game_mode::GameMode;
-// pub use global_pos::GlobalPos;
-// pub use hand::Hand;
-// pub use ident::ident;
-// pub use item::{ItemKind, ItemStack};
-// pub use packets::play::particle_s2c::Particle;
-// pub use raw::RawBytes;
-// use serde::{Deserialize, Serialize};
-// pub use sound::Sound;
-// pub use text::Text;
-// pub use valence_generated::{block, packet_id, status_effects};
-// pub use valence_ident::Ident;
-// pub use valence_protocol_macros::{Decode, Encode, Packet};
-// pub use var_int::VarInt;
-// pub use var_long::VarLong;
-// pub use velocity::Velocity;
-// pub use {
-//     anyhow, bytes, uuid, valence_ident as ident, valence_math as math, valence_nbt as nbt,
-//     valence_text as text,
-// };
+use anyhow::Context;
+pub use array::FixedArray;
+pub use biome_pos::BiomePos;
+pub use bit_set::FixedBitSet;
+pub use block::{BlockKind, BlockState};
+pub use block_pos::BlockPos;
+pub use bounded::Bounded;
+pub use byte_angle::ByteAngle;
+pub use chunk_pos::ChunkPos;
+pub use chunk_section_pos::ChunkSectionPos;
+pub use decode::PacketDecoder;
+use derive_more::{From, Into};
+pub use difficulty::Difficulty;
+pub use direction::Direction;
+pub use encode::{PacketEncoder, WritePacket};
+pub use game_mode::GameMode;
+pub use global_pos::GlobalPos;
+pub use hand::Hand;
+pub use ident::ident;
+pub use item::{ItemKind, ItemStack};
+pub use packets::play::particle_s2c::Particle;
+pub use raw::RawBytes;
+use serde::{Deserialize, Serialize};
+pub use sound::Sound;
+pub use text::Text;
+pub use valence_generated::{block, packet_id, status_effects}; // TODO: remove?
+pub use valence_ident::Ident;
+pub use valence_protocol_macros::{Decode, Encode, Packet};
+pub use var_int::VarInt;
+pub use var_long::VarLong;
+pub use velocity::Velocity;
+pub use {
+    anyhow, bytes, uuid, valence_ident as ident, valence_math as math, valence_nbt as nbt,
+    valence_text as text,
+};
 
 /// The maximum number of bytes in a single Minecraft packet.
 pub const MAX_PACKET_SIZE: i32 = 2097152;

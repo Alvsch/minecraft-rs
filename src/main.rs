@@ -57,6 +57,9 @@ async fn main() {
     world.add_handler(client_disconnect_handler);
     world.add_handler(init_client);
 
+    // world.add_plugin(HitboxPlugin);
+    // world.add_plugin(EntityPlugin);
+
 
     let server = world.spawn();
     world.insert(server, Server {
@@ -106,8 +109,6 @@ fn client_login_handler(
 
 fn init_client(r: Receiver<Insert<Client>, ()>) {
     let entity = r.event.entity;
-
-    
 
 }
 
