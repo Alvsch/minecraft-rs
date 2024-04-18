@@ -1,0 +1,24 @@
+[package]
+name = "valence_protocol"
+description = "Protocol library for Minecraft: Java Edition"
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+
+[features]
+encryption = ["dep:aes", "dep:cfb8"]
+compression = ["dep:flate2"]
+
+[dependencies]
+aes = { version = "0.8.4", optional = true }
+cfb8 = { version = "0.8.1", optional = true }
+flate2 = { version = "1.0.28", optional = true }
+derive_more.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+byteorder.workspace = true
+valence_math.workspace = true
+bitfield-struct.workspace = true
+
+[dev-dependencies]
+rand = "0.8.5"

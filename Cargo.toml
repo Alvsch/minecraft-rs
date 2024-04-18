@@ -1,11 +1,15 @@
 [package]
 name = "minecraft-rs"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 [workspace]
 resolver = "2"
 members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
 
 [profile.dev.package."*"]
 opt-level = 3
@@ -15,7 +19,6 @@ opt-level = 1
 
 
 [dependencies]
-derive_more = { version = "0.99.17", features = ["deref", "deref_mut"] }
 evenio.workspace = true
 futures = { version = "0.3.30", default-features = false, features = ["executor"] }
 hmac = "0.12.1"
@@ -31,7 +34,16 @@ valence_entity.workspace = true
 
 [workspace.dependencies]
 evenio = "0.5.0"
+proc-macro2 = "1.0.81"
+quote = "1.0.36"
+syn = { version = "2.0.60", features = ["full"] }
+heck = "0.5.0"
+derive_more = { version = "0.99.17", features = ["deref", "deref_mut"] }
+anyhow = "1.0.82"
+thiserror = "1.0.58"
+byteorder = "1.5.0"
+bitfield-struct = "0.6.1"
 
-valence_protocol = { git = "https://github.com/valence-rs/valence", features = ["compression", "encryption"] }
+valence_protocol = { path = "crates/valence_protocol", features = ["compression", "encryption"] }
 valence_entity = { path = "crates/valence_entity" }
-valence_generated = { git = "https://github.com/valence-rs/valence" }
+valence_math = { git = "https://github.com/valence-rs/valence" }
