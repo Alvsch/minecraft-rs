@@ -4,7 +4,7 @@ use evenio::prelude::*;
 use tracing::warn;
 use valence_protocol::{packets::handshaking::{handshake_c2s::HandshakeNextState, HandshakeC2s}, PacketDecoder, PacketEncoder};
 
-use crate::{block::BlockOn, event::{ConnectionEvent, LoginEvent, StatusEvent}, legacy_ping::try_handle_legacy_ping, packet_io::PacketIo};
+use crate::{block::BlockOn, event::{ConnectionEvent, LoginEvent, StatusEvent}, network::connect::legacy_ping::try_handle_legacy_ping, network::packet_io::PacketIo};
 
 #[derive(Debug, Clone)]
 pub struct HandshakeData {

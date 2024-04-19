@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use evenio::{entity::EntityId, event::Event};
 use tokio::net::TcpStream;
 
-use crate::{handshake::HandshakeData, login::ClientInfo, packet_io::PacketIo};
+use crate::{network::connect::handshake::HandshakeData, network::connect::login::ClientInfo, network::packet_io::PacketIo};
 
 #[derive(Debug, Event)]
 pub struct ConnectionEvent {

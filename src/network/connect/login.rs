@@ -5,7 +5,7 @@ use hmac::{Hmac, Mac};
 use sha2::Sha256;
 use valence_protocol::{anyhow::{self, ensure, Context}, ident, packets::login::{LoginCompressionS2c, LoginDisconnectS2c, LoginHelloC2s, LoginQueryRequestS2c, LoginQueryResponseC2s, LoginSuccessS2c}, profile::Property, text::{Color, IntoText}, uuid::Uuid, Decode, RawBytes, VarInt};
 
-use crate::{block::BlockOn, client::Properties, packet_io::PacketIo, ClientLoginEvent, ConnectionMode, LoginEvent, Server};
+use crate::{block::BlockOn, client::Properties, network::packet_io::PacketIo, ClientLoginEvent, ConnectionMode, LoginEvent, Server};
 
 #[derive(Debug, Clone)]
 pub struct ClientInfo {
@@ -74,7 +74,7 @@ pub fn login_handler(r: ReceiverMut<LoginEvent>, server: Single<&Server>, mut se
     });
 }
 
-async fn login_online(packet_io: &mut PacketIo) -> ClientInfo {
+async fn login_online(_packet_io: &mut PacketIo) -> ClientInfo {
     todo!()
 }
 

@@ -1,9 +1,11 @@
-use std::io::{self, ErrorKind};
+use std::{io::{self, ErrorKind}, sync::Arc};
 
-use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream};
+use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream, sync::Semaphore, task::JoinHandle};
 use valence_protocol::{anyhow, bytes::BytesMut, decode::PacketFrame, CompressionThreshold, Decode, Encode, Packet, PacketDecoder, PacketEncoder};
 
 use crate::client::Client;
+
+use super::byte_channel::ByteSender;
 
 pub struct PacketIo {
     stream: TcpStream,
@@ -64,11 +66,16 @@ impl PacketIo {
         }
     }
 
-    pub fn into_client(self) -> Client {
-        Client::new(
-            self.stream,
-            self.enc,
-        )
+    pub fn into_client(
+        self,
+        
+    ) -> Client {
+
+
+        Client {
+            stream: self.stream,
+            enc: self.enc,
+        }
     }
 
     #[allow(dead_code)]
@@ -81,4 +88,15 @@ impl PacketIo {
         self.enc.enable_encryption(key);
         self.dec.enable_encryption(key);
     }
+}
+
+struct RealClientConnection {
+    send: ByteSender,
+    recv: flume::Receiver<ReceivedPacket>,
+    /// Limits the amount of data queued in the `recv` channel. Each permit
+    /// represents one byte.
+    recv_sem: Arc<Semaphore>,
+    _cleanup: CleanupOnDrop,
+    reader_task: JoinHandle<()>,
+    writer_task: JoinHandle<()>,
 }

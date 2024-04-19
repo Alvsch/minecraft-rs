@@ -10,8 +10,8 @@ use crate::block::BlockOn;
 
 #[derive(Component)]
 pub struct Client {
-    stream: TcpStream,
-    enc: PacketEncoder,
+    pub stream: TcpStream,
+    pub enc: PacketEncoder,
 }
 
 /// Writes packets into this client's packet buffer. The buffer is flushed at
@@ -30,13 +30,6 @@ impl WritePacket for Client {
 }
 
 impl Client {
-    pub fn new(stream: TcpStream, enc: PacketEncoder) -> Self {
-        Client {
-            stream,
-            enc,
-        }
-    }
-
     pub fn connection(&self) -> &TcpStream {
         &self.stream
     }
@@ -145,9 +138,6 @@ pub struct IpAddress(pub IpAddr);
 
 #[derive(Component, Clone, PartialEq, Eq, Debug, Deref, DerefMut)]
 pub struct Username(pub String);
-
-#[derive(Component, Copy, Clone, PartialEq, Eq, Debug, Deref, DerefMut)]
-pub struct UuidComponent(pub valence_protocol::uuid::Uuid);
 
 #[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
 pub struct DeathLocation(pub Option<(Ident<String>, BlockPos)>);

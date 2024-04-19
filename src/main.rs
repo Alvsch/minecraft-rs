@@ -1,25 +1,23 @@
 use std::sync::{atomic::AtomicUsize, Arc};
 
-use client::{Client, IpAddress, Username, UuidComponent};
+use client::{Client, IpAddress, Username};
 use evenio::prelude::*;
 use event::{ClientDisconnectEvent, ClientLoginEvent, ConnectionEvent, LoginEvent, StatusEvent};
-use handshake::connection_handler;
-use login::login_handler;
+use network::connect::handshake::connection_handler;
+use network::connect::login::login_handler;
 use status::status_handler;
 use tokio::net::TcpListener;
 use tracing::{info, Level};
 use valence_protocol::CompressionThreshold;
+use valence_server_common::UniqueId;
 
-pub mod packet_io;
 pub mod block;
-pub mod login;
 pub mod status;
 pub mod client;
 pub mod event;
-pub mod legacy_ping;
-pub mod handshake;
+pub mod network;
 pub mod position;
-pub mod set_brand;
+pub mod brand;
 
 #[derive(Debug, Component)]
 pub struct Server {
@@ -92,7 +90,7 @@ fn client_login_handler(
         Insert<Client>,
         Insert<IpAddress>,
         Insert<Username>,
-        Insert<UuidComponent>,
+        Insert<UniqueId>,
     )>
 ) {
     let event = EventMut::take(r.event);
@@ -103,12 +101,14 @@ fn client_login_handler(
     sender.insert(client, packet_io.into_client());
     sender.insert(client, IpAddress(info.ip));
     sender.insert(client, Username(info.username));
-    sender.insert(client, UuidComponent(info.uuid));
+    sender.insert(client, UniqueId(info.uuid));
 
 }
 
 fn init_client(r: Receiver<Insert<Client>, ()>) {
     let entity = r.event.entity;
+
+    
 
 }
 
